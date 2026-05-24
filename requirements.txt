@@ -1,0 +1,7 @@
+torch>=2.0
+torchvision
+transformers
+sam2
+opencv-python
+numpy
+Pillow

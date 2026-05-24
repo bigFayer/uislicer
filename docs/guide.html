@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UI切图专业工具 v2.0 — Grounding DINO + SAM 2</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --dim: #8b949e;
+    --accent: #ff8c42;
+    --accent2: #4ecdc4;
+    --code-bg: #1a1e24;
+    --success: #2ed573;
+    --warn: #ffd93d;
+    --error: #ff4757;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; padding: 2rem;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  /* 标题 */
+  .hero {
+    text-align: center; padding: 3rem 1rem;
+    border-bottom: 1px solid var(--border); margin-bottom: 3rem;
+  }
+  .hero h1 { font-size: 2.2rem; margin-bottom: 0.5rem; }
+  .hero h1 span { color: var(--accent); }
+  .hero .subtitle { color: var(--dim); font-size: 1.1rem; }
+  .badge {
+    display: inline-block; padding: 0.2rem 0.8rem; border-radius: 999px;
+    font-size: 0.8rem; font-weight: 600; margin: 0.3rem;
+  }
+  .badge-orange { background: var(--accent); color: #000; }
+  .badge-teal { background: var(--accent2); color: #000; }
+  .badge-green { background: var(--success); color: #000; }
+
+  /* 架构图 */
+  .arch-diagram {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 2rem; margin: 2rem 0; text-align: center; overflow-x: auto;
+  }
+  .arch-diagram pre {
+    font-family: "Cascadia Code", "Fira Code", monospace;
+    font-size: 0.85rem; color: var(--text); text-align: left;
+    display: inline-block;
+  }
+  .arch-diagram .phase-label { color: var(--accent); font-weight: bold; }
+  .arch-diagram .tool-name { color: var(--accent2); }
+  .arch-diagram .output { color: var(--success); }
+
+  /* 区块 */
+  .section { margin-bottom: 3rem; }
+  .section h2 {
+    font-size: 1.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent); display: inline-block;
+  }
+  .section h3 { font-size: 1.2rem; margin: 1.5rem 0 0.8rem; color: var(--accent2); }
+  .section p { margin: 0.8rem 0; color: var(--dim); }
+
+  /* 卡片 */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; margin: 1rem 0;
+  }
+
+  /* 对比表格 */
+  table {
+    width: 100%; border-collapse: collapse; margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    padding: 0.6rem 1rem; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { background: var(--card); color: var(--accent); font-weight: 600; }
+  td { color: var(--dim); }
+  tr:hover td { color: var(--text); background: rgba(255,140,66,0.05); }
+  .tag-yes { color: var(--success); font-weight: 600; }
+  .tag-no { color: var(--error); }
+  .tag-mid { color: var(--warn); }
+
+  /* 代码块 */
+  .code-block {
+    position: relative; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; margin: 1rem 0; overflow: hidden;
+  }
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 1rem; background: var(--card); border-bottom: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--dim);
+  }
+  .copy-btn {
+    background: var(--accent); color: #000; border: none; padding: 0.3rem 0.8rem;
+    border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
+    transition: opacity 0.2s;
+  }
+  .copy-btn:hover { opacity: 0.8; }
+  .copy-btn.copied { background: var(--success); }
+  .code-block pre {
+    padding: 1rem; overflow-x: auto; font-size: 0.85rem;
+    font-family: "Cascadia Code", "Fira Code", monospace; line-height: 1.6;
+    color: var(--text); max-height: 600px;
+  }
+
+  /* 步骤 */
+  .step {
+    display: flex; gap: 1rem; margin: 1.5rem 0; align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); color: #000; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+  }
+  .step-content { flex: 1; }
+  .step-content h4 { margin-bottom: 0.3rem; }
+  .step-content p { margin: 0.3rem 0; font-size: 0.95rem; }
+
+  /* 提示框 */
+  .tip {
+    border-left: 3px solid var(--accent); padding: 1rem 1.5rem;
+    background: rgba(255,140,66,0.08); border-radius: 0 8px 8px 0;
+    margin: 1rem 0; font-size: 0.95rem;
+  }
+  .tip.warn { border-color: var(--warn); background: rgba(255,217,61,0.08); }
+  .tip.green { border-color: var(--success); background: rgba(46,213,115,0.08); }
+
+  /* 下载按钮 */
+  .download-btn {
+    display: inline-block; padding: 0.8rem 2rem; background: var(--accent);
+    color: #000; font-weight: 700; font-size: 1rem; border-radius: 8px;
+    text-decoration: none; cursor: pointer; border: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255,140,66,0.4);
+  }
+
+  /* 目录 */
+  .toc {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem 2rem; margin: 2rem 0;
+  }
+  .toc h3 { margin-bottom: 0.8rem; color: var(--accent); }
+  .toc ol { padding-left: 1.5rem; }
+  .toc li { margin: 0.4rem 0; }
+  .toc a { color: var(--accent2); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 流程图 */
+  .flow {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+    justify-content: center; margin: 1.5rem 0;
+  }
+  .flow-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 1.2rem; font-size: 0.9rem; text-align: center;
+    min-width: 120px;
+  }
+  .flow-item.active { border-color: var(--accent); color: var(--accent); }
+  .flow-arrow { color: var(--dim); font-size: 1.2rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ==================== 标题 ==================== -->
+<div class="hero">
+  <h1>UI切图专业工具 <span>v2.0</span></h1>
+  <p class="subtitle">Grounding DINO + SAM 2 语义分割 · 像素级精度 · 文本引导</p>
+  <div style="margin-top:1rem">
+    <span class="badge badge-orange">文本引导检测</span>
+    <span class="badge badge-teal">像素级掩码</span>
+    <span class="badge badge-green">透明PNG导出</span>
+    <span class="badge badge-orange">2GB显存可跑</span>
+  </div>
+</div>
+
+<!-- ==================== 目录 ==================== -->
+<div class="toc">
+  <h3>目录</h3>
+  <ol>
+    <li><a href="#why">为什么换方案？旧方案的根本问题</a></li>
+    <li><a href="#how-it-works">工作原理：两阶段管道</a></li>
+    <li><a href="#requirements">系统要求</a></li>
+    <li><a href="#install">安装步骤</a></li>
+    <li><a href="#quickstart">快速开始（3步跑通）</a></li>
+    <li><a href="#usage">完整用法</a></li>
+    <li><a href="#customize">自定义提示词</a></li>
+    <li><a href="#troubleshoot">常见问题</a></li>
+    <li><a href="#vs">新旧方案对比</a></li>
+    <li><a href="#code">完整源代码</a></li>
+  </ol>
+</div>
+
+<!-- ==================== 1. 为什么换 ==================== -->
+<div class="section" id="why">
+  <h2>1. 为什么换方案？</h2>
+
+  <div class="card">
+    <h3 style="color:var(--error)">旧方案的根本缺陷：让AI"猜"像素坐标</h3>
+    <p>旧方案（auto_slicer.py / ui_slicer_workflow.py）的工作方式是：</p>
+    <div class="flow">
+      <div class="flow-item">游戏UI图片</div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-item">发送给AI大模型<br><small>(GPT-4V / GLM)</small></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-item">AI返回JSON<br><small>{"x":100, "y":200}</small></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-item">OpenCV按坐标裁切</div>
+    </div>
+    <p><strong>问题：</strong>语言模型不是空间定位器。它返回的 <code>[x:100, y:200, w:120, h:40]</code> 是<strong>近似值</strong>，永远无法精确到像素级。金币切偏、图标残缺、坐标漂移都是必然结果。</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--success)">新方案：让分割模型直接输出像素掩码</h3>
+    <div class="flow">
+      <div class="flow-item">游戏UI图片</div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-item active">Grounding DINO<br><small>文本引导检测</small></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-item active">SAM 2<br><small>像素级分割</small></div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-item">透明PNG导出</div>
+    </div>
+    <p><strong>关键区别：</strong>不再"猜坐标"，而是用专业检测模型定位 + 分割模型生成<strong>每个像素的掩码</strong>。圆形金币、不规则装饰都能精确裁切。</p>
+  </div>
+</div>
+
+<!-- ==================== 2. 工作原理 ==================== -->
+<div class="section" id="how-it-works">
+  <h2>2. 工作原理</h2>
+
+  <div class="arch-diagram">
+<pre>
+<span class="phase-label">Phase 1: Grounding DINO（文本引导检测）</span>
+  输入: 图片 + 文本提示 "button . icon . coin . panel"
+    ↓
+  <span class="tool-name">Grounding DINO</span> (IDEA-Research/grounding-dino-tiny, ~600MB)
+    ↓
+  输出: 每个匹配元素的精确边界框 (x1,y1,x2,y2)
+    ↓
+  <span style="color:var(--error)">[释放显存] 卸载 Grounding DINO</span>
+
+<span class="phase-label">Phase 2: SAM 2（像素级分割）</span>
+  输入: 原图 + Phase 1 的边界框
+    ↓
+  <span class="tool-name">SAM 2</span> (sam2.1-hiera-tiny, ~80MB)
+    ↓
+  输出: 每个元素的像素级二值掩码 (H×W bool数组)
+    ↓
+  <span style="color:var(--error)">[释放显存] 卸载 SAM 2</span>
+
+<span class="phase-label">Phase 3: 导出</span>
+  掩码外区域 → 透明 (alpha=0)
+    ↓
+  裁剪到掩码边界 + padding
+    ↓
+  <span class="output">每个元素 → 独立的透明PNG文件</span>
+  附加: _preview.png（检测框预览）+ manifest.json（清单）
+</pre>
+  </div>
+
+  <div class="tip green">
+    <strong>显存管理：</strong>两个模型不会同时驻留显存。Phase 1 完成后释放 Grounding DINO，再加载 SAM 2。峰值显存 ~1.5GB。
+  </div>
+</div>
+
+<!-- ==================== 3. 系统要求 ==================== -->
+<div class="section" id="requirements">
+  <h2>3. 系统要求</h2>
+
+  <div class="card">
+    <table>
+      <tr><th>项目</th><th>最低要求</th><th>推荐</th></tr>
+      <tr><td>GPU</td><td>NVIDIA GPU, <span class="tag-yes">2GB VRAM</span></td><td>4GB+ VRAM</td></tr>
+      <tr><td>CUDA</td><td>CUDA 12.x</td><td>CUDA 12.4+</td></tr>
+      <tr><td>Python</td><td>3.9+</td><td>3.10 / 3.11</td></tr>
+      <tr><td>PyTorch</td><td>2.1+ (CUDA版)</td><td>2.5+</td></tr>
+      <tr><td>磁盘</td><td>~1GB (模型权重)</td><td>SSD</td></tr>
+    </table>
+  </div>
+
+  <div class="tip warn">
+    <strong>注意：</strong>PyTorch 必须是 CUDA 版本，不能是 CPU 版。检查方法：<code>python -c "import torch; print(torch.cuda.is_available())"</code>，输出必须为 <code>True</code>。
+  </div>
+</div>
+
+<!-- ==================== 4. 安装 ==================== -->
+<div class="section" id="install">
+  <h2>4. 安装步骤</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <h4>创建虚拟环境（推荐）</h4>
+      <div class="code-block">
+        <div class="code-header"><span>bash</span></div>
+        <pre>python -m venv slicer_env
+# Windows:
+slicer_env\Scripts\activate
+# Linux/Mac:
+source slicer_env/bin/activate</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <h4>安装 CUDA 版 PyTorch</h4>
+      <div class="code-block">
+        <div class="code-header"><span>bash — CUDA 12.8</span></div>
+        <pre>pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128</pre>
+      </div>
+      <p>验证：<code>python -c "import torch; print(torch.cuda.is_available())"</code> → 应输出 <code>True</code></p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <h4>安装依赖</h4>
+      <div class="code-block">
+        <div class="code-header"><span>bash</span></div>
+        <pre>pip install transformers sam2 opencv-python Pillow</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <h4>下载脚本</h4>
+      <p>将本页底部的完整源代码保存为 <code>ui_slicer_pro.py</code>，或点击下方按钮直接下载：</p>
+      <div style="margin:1rem 0">
+        <button class="download-btn" onclick="downloadScript()">
+          ⬇ 下载 ui_slicer_pro.py
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <h4>验证安装</h4>
+      <div class="code-block">
+        <div class="code-header"><span>bash</span></div>
+        <pre>python ui_slicer_pro.py --help</pre>
+      </div>
+      <p>如果看到帮助信息，说明安装成功。首次运行时模型会自动从 HuggingFace 下载（~680MB）。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 5. 快速开始 ==================== -->
+<div class="section" id="quickstart">
+  <h2>5. 快速开始</h2>
+
+  <div class="card">
+    <h3>3 步跑通</h3>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>基础用法（默认提示词）</h4>
+        <div class="code-block">
+          <div class="code-header"><span>bash</span></div>
+          <pre>python ui_slicer_pro.py "你的UI图片.png"</pre>
+        </div>
+        <p>使用默认提示词，自动检测常见游戏UI元素。输出到 <code>图片名_sliced/</code> 目录。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>查看结果</h4>
+        <div class="code-block">
+          <div class="code-header"><span>bash</span></div>
+          <pre># 输出目录结构:
+图片名_sliced/
+  ├── _preview.png          ← 检测框+掩码叠加预览图
+  ├── manifest.json         ← 元素清单（名称/坐标/置信度）
+  ├── button_0.png          ← 切出的按钮
+  ├── coin_0.png            ← 切出的金币
+  ├── icon_0.png            ← 切出的图标
+  └── ...</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>调整参数</h4>
+        <p>如果检测到的元素太少，降低阈值：</p>
+        <div class="code-block">
+          <div class="code-header"><span>bash</span></div>
+          <pre># 降低检测阈值，找到更多元素
+python ui_slicer_pro.py "图片.png" --box_threshold 0.2
+
+# 用自定义提示词精确指定要切的元素
+python ui_slicer_pro.py "图片.png" --prompt "gold coin . blue button . red star"</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 6. 完整用法 ==================== -->
+<div class="section" id="usage">
+  <h2>6. 完整用法</h2>
+
+  <div class="code-block">
+    <div class="code-header"><span>python ui_slicer_pro.py --help</span></div>
+    <pre>参数说明:
+
+  image              输入图片路径（必填）
+
+  --prompt, -p       检测提示词，用 . 分隔不同元素类型
+                     默认: "button . icon . coin . gold . panel . badge ..."
+
+  --output, -o       输出目录（默认=图片名_sliced/）
+
+  --padding, -pd     外扩边距 px（默认4）
+                     建议: 小图标用 2-4, 大面板用 8-12
+
+  --box_threshold, -bt   检测框置信度阈值（默认0.3）
+                         降低 → 检测更多元素（但可能有误检）
+                         升高 → 只保留高置信度检测
+
+  --text_threshold, -tt  文本匹配阈值（默认0.25）
+                         降低 → 宽松匹配（可能匹配到不相关元素）
+                         升高 → 严格匹配（可能漏检）</pre>
+  </div>
+
+  <h3>示例</h3>
+
+  <div class="code-block">
+    <div class="code-header"><span>bash</span></div>
+    <pre># 基础用法
+python ui_slicer_pro.py "7日登录.png"
+
+# 指定输出目录和padding
+python ui_slicer_pro.py "7日登录.png" -o "./output" --padding 8
+
+# 只切特定元素
+python ui_slicer_pro.py "7日登录.png" -p "gold coin . claim button . close button . day label"
+
+# 低阈值，找更多元素
+python ui_slicer_pro.py "7日登录.png" --box_threshold 0.15 --text_threshold 0.15
+
+# 高阈值，只要确定的结果
+python ui_slicer_pro.py "7日登录.png" --box_threshold 0.5</pre>
+  </div>
+</div>
+
+<!-- ==================== 7. 自定义提示词 ==================== -->
+<div class="section" id="customize">
+  <h2>7. 自定义提示词指南</h2>
+
+  <div class="tip">
+    <strong>核心原则：</strong>提示词用英文，用 <code>.</code> 分隔，每个词描述一种元素类型。越具体越好。
+  </div>
+
+  <div class="card">
+    <h3>游戏UI常用提示词模板</h3>
+    <table>
+      <tr><th>场景</th><th>推荐提示词</th></tr>
+      <tr><td>登录奖励</td><td><code>day label . reward icon . claim button . gold coin . gem . chest</code></td></tr>
+      <tr><td>商城面板</td><td><code>price tag . buy button . item icon . currency icon . discount badge . close button</code></td></tr>
+      <tr><td>战斗HUD</td><td><code>health bar . mana bar . skill icon . avatar . level badge . score label</code></td></tr>
+      <tr><td>设置面板</td><td><code>toggle switch . slider . dropdown . checkbox . close button . save button</code></td></tr>
+      <tr><td>背包/背包</td><td><code>item slot . item icon . rarity badge . count label . tab button . sort button</code></td></tr>
+      <tr><td>通用</td><td><code>button . icon . panel . badge . label . bar . frame . decoration . arrow . star . coin . gem . chest . avatar</code></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>调参技巧</h3>
+    <table>
+      <tr><th>问题</th><th>解决方案</th></tr>
+      <tr><td>检测太少</td><td>降低 <code>--box_threshold</code>（如 0.15），增加提示词种类</td></tr>
+      <tr><td>检测太多/误检</td><td>升高 <code>--box_threshold</code>（如 0.4），提示词写更具体</td></tr>
+      <tr><td>金币没检测到</td><td>提示词加 <code>gold coin . coin . circle icon . yellow circle</code></td></tr>
+      <tr><td>边界不紧</td><td>减小 <code>--padding</code>（如 1-2）</td></tr>
+      <tr><td>边界太紧</td><td>增大 <code>--padding</code>（如 8-12）</td></tr>
+      <tr><td>相似元素混淆</td><td>用更具体的描述：<code>blue button . red button</code> 而非 <code>button . button</code></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== 8. 常见问题 ==================== -->
+<div class="section" id="troubleshoot">
+  <h2>8. 常见问题</h2>
+
+  <div class="card">
+    <h3>Q: 报错 "未检测到CUDA GPU"</h3>
+    <p>A: PyTorch 是 CPU 版本。重装 CUDA 版：</p>
+    <div class="code-block">
+      <pre>pip uninstall torch torchvision
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Q: 报错 CUDA out of memory</h3>
+    <p>A: 显存不足。确保没有其他程序占用GPU，然后：</p>
+    <div class="code-block">
+      <pre># 检查显存占用
+nvidia-smi
+
+# 如果其他程序占用了显存，先关闭它们
+# 特别是浏览器、Cocos Creator等</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Q: 模型下载慢 / 下载失败</h3>
+    <p>A: 需要访问 HuggingFace。如果网络受限：</p>
+    <div class="code-block">
+      <pre># 方法1: 设置镜像
+set HF_ENDPOINT=https://hf-mirror.com
+
+# 方法2: 手动下载模型文件放到缓存目录
+# Windows: C:\Users\你的用户名\.cache\huggingface\hub\</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Q: 检测到0个元素</h3>
+    <p>A: 提示词与图片内容不匹配。尝试：</p>
+    <div class="code-block">
+      <pre># 1. 降低阈值
+python ui_slicer_pro.py "图片.png" --box_threshold 0.1 --text_threshold 0.1
+
+# 2. 使用更通用的提示词
+python ui_slicer_pro.py "图片.png" -p "object . element . shape . icon . button"</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Q: 同类元素被分成不同的label</h3>
+    <p>A: Grounding DINO 的文本匹配会根据提示词分词。如果提示词是 <code>gold coin . blue coin</code>，两类金币会得到不同标签。如果想要统一的标签，用单一提示词 <code>coin</code>。</p>
+  </div>
+</div>
+
+<!-- ==================== 9. 新旧对比 ==================== -->
+<div class="section" id="vs">
+  <h2>9. 新旧方案对比</h2>
+
+  <div class="card">
+    <table>
+      <tr>
+        <th>维度</th>
+        <th style="color:var(--error)">旧方案 (AI坐标)</th>
+        <th style="color:var(--success)">新方案 (GD+SAM2)</th>
+      </tr>
+      <tr>
+        <td>定位方式</td>
+        <td>AI大模型返回JSON坐标数字</td>
+        <td>专业检测模型 + 分割模型</td>
+      </tr>
+      <tr>
+        <td>输出格式</td>
+        <td>矩形 bbox (近似坐标)</td>
+        <td class="tag-yes">像素级掩码 + 矩形bbox</td>
+      </tr>
+      <tr>
+        <td>圆形/不规则形状</td>
+        <td class="tag-no">❌ 按矩形裁切，会有多余背景</td>
+        <td class="tag-yes">✅ 像素级掩码，精确到边缘</td>
+      </tr>
+      <tr>
+        <td>透明背景</td>
+        <td class="tag-no">❌ 需要额外的去背景处理</td>
+        <td class="tag-yes">✅ 掩码外自动透明</td>
+      </tr>
+      <tr>
+        <td>金币精度</td>
+        <td class="tag-no">经常切偏</td>
+        <td class="tag-yes">像素级精确</td>
+      </tr>
+      <tr>
+        <td>需要API</td>
+        <td class="tag-no">❌ 需要调用云端AI API</td>
+        <td class="tag-yes">✅ 完全本地运行</td>
+      </tr>
+      <tr>
+        <td>成本</td>
+        <td>每次调用消耗API token</td>
+        <td>免费（一次性下载模型）</td>
+      </tr>
+      <tr>
+        <td>速度</td>
+        <td>慢（网络请求 + 多轮重试）</td>
+        <td class="tag-yes">快（本地GPU推理，单次完成）</td>
+      </tr>
+      <tr>
+        <td>可定制性</td>
+        <td>只能通过 prompt 调整</td>
+        <td class="tag-yes">文本提示词 + 阈值 + padding 全可调</td>
+      </tr>
+      <tr>
+        <td>网络依赖</td>
+        <td class="tag-no">❌ 每次都需要</td>
+        <td class="tag-yes">✅ 仅首次下载模型</td>
+      </tr>
+      <tr>
+        <td>最小显存</td>
+        <td>不需要GPU</td>
+        <td>~2GB（顺序加载模式）</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== 10. 完整源代码 ==================== -->
+<div class="section" id="code">
+  <h2>10. 完整源代码</h2>
+
+  <div style="margin-bottom:1rem;">
+    <button class="download-btn" onclick="downloadScript()">
+      ⬇ 下载 ui_slicer_pro.py
+    </button>
+    <button class="copy-btn" style="padding:0.6rem 1.5rem;font-size:0.95rem;border-radius:8px;margin-left:1rem;" onclick="copyAllCode()">
+      复制全部代码
+    </button>
+  </div>
+
+  <div class="code-block" id="source-code">
+    <div class="code-header">
+      <span>ui_slicer_pro.py</span>
+      <button class="copy-btn" onclick="copyCode(this)">复制</button>
+    </div>
+    <pre id="python-code">#!/usr/bin/env python3
+"""
+UI切图专业工具 v2.0 - Grounding DINO + SAM 2
+==========================================
+基于语义分割的像素级UI元素自动切片工具
+
+核心优势（vs 旧版AI坐标方案）：
+  - 文本引导检测：用自然语言描述要切的元素类型
+  - 像素级掩码：圆形金币、不规则装饰都能精确裁切
+  - 透明PNG导出：掩码外区域自动变透明
+  - 顺序加载：Grounding DINO 和 SAM 2 不会同时驻留显存，2GB即可跑
+
+用法：
+  python ui_slicer_pro.py "图片路径" [--prompt "button . icon . coin"] [--output 输出目录]
+"""
+
+import os
+import re
+import sys
+import json
+import argparse
+import time
+from pathlib import Path
+from datetime import datetime
+
+import cv2
+import numpy as np
+import torch
+from PIL import Image
+
+# 游戏UI常见元素的默认文本提示
+DEFAULT_PROMPT = (
+    "button . icon . coin . gold . panel . badge . label . bar . "
+    "checkbox . close button . arrow . star . gem . chest . reward . "
+    "avatar . decoration . frame . card . tab . header"
+)
+
+
+def check_env():
+    """检查运行环境"""
+    print("=" * 60)
+    print("  UI切图专业工具 v2.0")
+    print("  Grounding DINO + SAM 2 语义分割")
+    print("=" * 60)
+
+    if not torch.cuda.is_available():
+        print("\n[错误] 未检测到CUDA GPU!")
+        print("  安装CUDA版PyTorch:")
+        print("  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128")
+        sys.exit(1)
+
+    gpu = torch.cuda.get_device_name(0)
+    vram = torch.cuda.get_device_properties(0).total_mem / 1024 ** 3
+    print(f"  GPU:     {gpu}")
+    print(f"  显存:    {vram:.1f} GB")
+    print(f"  CUDA:    {torch.version.cuda}")
+    print(f"  PyTorch: {torch.__version__}")
+    print()
+
+    # 检查依赖
+    missing = []
+    try:
+        import transformers
+    except ImportError:
+        missing.append("transformers")
+    try:
+        import sam2
+    except ImportError:
+        missing.append("sam2")
+    try:
+        import cv2
+    except ImportError:
+        missing.append("opencv-python")
+
+    if missing:
+        print(f"[错误] 缺少依赖: {', '.join(missing)}")
+        print(f"  安装: pip install {' '.join(missing)}")
+        sys.exit(1)
+
+
+def phase1_detect(image_path, text_prompt, box_threshold=0.3, text_threshold=0.25):
+    """
+    Phase 1: Grounding DINO 文本引导检测
+    输入图片 + 文本提示（如 "button . icon . coin"），返回精确边界框
+    """
+    print("[Phase 1] Grounding DINO 文本引导检测")
+    print("-" * 40)
+
+    from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
+
+    device = "cuda"
+    model_id = "IDEA-Research/grounding-dino-tiny"
+
+    print(f"  加载模型: {model_id} (首次运行需下载，约600MB)")
+    t0 = time.time()
+    processor = AutoProcessor.from_pretrained(model_id)
+    model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
+    print(f"  模型就绪: {time.time() - t0:.1f}s")
+
+    image = Image.open(image_path).convert("RGB")
+    w, h = image.size
+    print(f"  图片: {w}x{h}")
+    print(f"  检测提示: {text_prompt}")
+
+    inputs = processor(images=image, text=text_prompt, return_tensors="pt").to(device)
+
+    t0 = time.time()
+    with torch.no_grad():
+        outputs = model(**inputs)
+    print(f"  推理完成: {time.time() - t0:.1f}s")
+
+    results = processor.post_process_grounded_object_detection(
+        outputs,
+        inputs.input_ids,
+        threshold=box_threshold,
+        text_threshold=text_threshold,
+        target_sizes=[(h, w)],
+    )
+
+    boxes = results[0]["boxes"].cpu().numpy()  # (N, 4) xyxy
+    labels = list(results[0]["labels"])
+    scores = results[0]["scores"].cpu().numpy()
+
+    print(f"  检测到 {len(labels)} 个元素:")
+    for i, (label, score) in enumerate(zip(labels, scores)):
+        x1, y1, x2, y2 = boxes[i]
+        print(f"    [{i + 1}] {label}  conf={score:.2f}  bbox=[{int(x1)},{int(y1)},{int(x2)},{int(y2)}]")
+
+    # 释放显存
+    del model, processor, inputs, outputs
+    torch.cuda.empty_cache()
+    alloc = torch.cuda.memory_allocated(0) / 1024 ** 3
+    print(f"  [显存释放] 当前占用: {alloc:.2f} GB")
+    print()
+
+    return boxes, labels, scores
+
+
+def phase2_segment(image_path, boxes):
+    """
+    Phase 2: SAM 2 像素级分割
+    接收边界框，为每个框生成像素级二值掩码
+    """
+    print("[Phase 2] SAM 2 像素级分割")
+    print("-" * 40)
+
+    from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+    device = "cuda"
+
+    print(f"  加载模型: sam2.1-hiera-tiny (首次运行需下载，约80MB)")
+    t0 = time.time()
+    predictor = SAM2ImagePredictor.from_pretrained(
+        "facebook/sam2.1-hiera-tiny",
+        device=device,
+    )
+    print(f"  模型就绪: {time.time() - t0:.1f}s")
+
+    image = np.array(Image.open(image_path).convert("RGB"))
+    predictor.set_image(image)
+
+    all_masks = []
+    all_scores = []
+
+    t0 = time.time()
+    for i, box in enumerate(boxes):
+        masks, scores, _ = predictor.predict(
+            box=box[None, :],  # (1, 4) xyxy
+            multimask_output=False,
+        )
+        all_masks.append(masks.squeeze())
+        all_scores.append(float(scores.squeeze()))
+    elapsed = time.time() - t0
+
+    print(f"  分割完成: {len(all_masks)} 个掩码 ({elapsed:.1f}s)")
+    for i, score in enumerate(all_scores):
+        print(f"    [{i + 1}] IoU={score:.3f}")
+
+    # 释放显存
+    del predictor
+    torch.cuda.empty_cache()
+    alloc = torch.cuda.memory_allocated(0) / 1024 ** 3
+    print(f"  [显存释放] 当前占用: {alloc:.2f} GB")
+    print()
+
+    return np.array(all_masks), np.array(all_scores)
+
+
+def phase3_export(image_path, masks, labels, boxes, scores, output_dir, padding=4):
+    """
+    Phase 3: 导出透明PNG切片
+    将每个掩码区域裁切为独立PNG文件
+    """
+    print("[Phase 3] 导出切片")
+    print("-" * 40)
+
+    img = np.array(Image.open(image_path).convert("RGBA"))
+    os.makedirs(output_dir, exist_ok=True)
+
+    name_counter = {}
+    slices = []
+
+    for i, (mask, label, box, score) in enumerate(zip(masks, labels, boxes, scores)):
+        # 掩码外区域变透明
+        element = img.copy()
+        element[~mask] = 0
+
+        # 找掩码实际占据的区域（裁掉空白）
+        rows = np.any(mask, axis=1)
+        cols = np.any(mask, axis=0)
+
+        if not rows.any() or not cols.any():
+            print(f"  跳过空掩码: {label}_{i}")
+            continue
+
+        y_idx = np.where(rows)[0]
+        x_idx = np.where(cols)[0]
+        y1, y2 = y_idx[0], y_idx[-1] + 1
+        x1, x2 = x_idx[0], x_idx[-1] + 1
+
+        # 加padding
+        x1 = max(0, x1 - padding)
+        y1 = max(0, y1 - padding)
+        x2 = min(img.shape[1], x2 + padding)
+        y2 = min(img.shape[0], y2 + padding)
+
+        cropped = element[y1:y2, x1:x2]
+
+        # 跳过过小区域
+        if cropped.shape[0] &lt; 5 or cropped.shape[1] &lt; 5:
+            continue
+
+        # 生成唯一文件名
+        safe_name = re.sub(r'[&lt;&gt;:"/\\|?*]', '_', label)
+        if safe_name in name_counter:
+            name_counter[safe_name] += 1
+            fname = f"{safe_name}_{name_counter[safe_name]}"
+        else:
+            name_counter[safe_name] = 0
+            fname = safe_name
+
+        out_path = os.path.join(output_dir, f"{fname}.png")
+        Image.fromarray(cropped).save(out_path)
+
+        slices.append({
+            "file": f"{fname}.png",
+            "label": label,
+            "bbox": {
+                "x": int(x1), "y": int(y1),
+                "width": int(x2 - x1), "height": int(y2 - y1),
+            },
+            "mask_iou": round(float(score), 3),
+            "size": f"{cropped.shape[1]}x{cropped.shape[0]}",
+        })
+
+        print(f"  [{i + 1}/{len(masks)}] {fname}.png "
+              f"({cropped.shape[1]}x{cropped.shape[0]}) IoU={score:.2f}")
+
+    return slices
+
+
+def generate_preview(image_path, slices, masks, output_dir):
+    """生成检测框+掩码叠加预览图"""
+    img = cv2.imread(image_path)
+
+    # 按label分配颜色
+    color_palette = [
+        (0, 200, 255), (0, 255, 100), (255, 100, 0), (0, 255, 255),
+        (255, 0, 255), (200, 200, 0), (0, 100, 255), (255, 200, 0),
+        (128, 0, 255), (0, 128, 255), (255, 128, 0), (128, 255, 0),
+    ]
+    color_map = {}
+    for s in slices:
+        if s["label"] not in color_map:
+            color_map[s["label"]] = color_palette[len(color_map) % len(color_palette)]
+
+    # 绘制半透明掩码叠加
+    overlay = img.copy()
+    for idx, s in enumerate(slices):
+        mask = masks[idx]
+        color = color_map[s["label"]]
+        overlay[mask] = overlay[mask] * 0.5 + np.array(color) * 0.5
+    img = cv2.addWeighted(overlay, 0.6, img, 0.4, 0)
+
+    # 绘制边界框和标签
+    for s in slices:
+        bx, by = s["bbox"]["x"], s["bbox"]["y"]
+        bw, bh = s["bbox"]["width"], s["bbox"]["height"]
+        color = color_map[s["label"]]
+        cv2.rectangle(img, (bx, by), (bx + bw, by + bh), color, 2)
+        text = f"{s['label']} {s['size']}"
+        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.35, 1)
+        cv2.rectangle(img, (bx, by - th - 6), (bx + tw + 4, by), color, -1)
+        cv2.putText(img, text, (bx + 2, by - 3),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
+
+    preview_path = os.path.join(output_dir, "_preview.png")
+    cv2.imwrite(preview_path, img)
+    print(f"  预览图: {preview_path}")
+
+
+def generate_manifest(image_path, slices, output_dir, text_prompt):
+    """生成JSON清单文件"""
+    w, h = Image.open(image_path).size
+
+    categories = {}
+    for s in slices:
+        categories[s["label"]] = categories.get(s["label"], 0) + 1
+
+    manifest = {
+        "source": os.path.basename(image_path),
+        "source_size": {"width": w, "height": h},
+        "method": "Grounding DINO + SAM 2",
+        "text_prompt": text_prompt,
+        "created_at": datetime.now().isoformat(),
+        "total_slices": len(slices),
+        "categories": categories,
+        "slices": slices,
+    }
+
+    manifest_path = os.path.join(output_dir, "manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    print(f"  清单: {manifest_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="UI切图专业工具 v2.0 - Grounding DINO + SAM 2 语义分割"
+    )
+    parser.add_argument("image", help="输入图片路径")
+    parser.add_argument(
+        "--prompt", "-p", default=DEFAULT_PROMPT,
+        help="检测提示词，用 . 分隔不同元素类型",
+    )
+    parser.add_argument("--output", "-o", default=None, help="输出目录（默认=图片名_sliced）")
+    parser.add_argument("--padding", "-pd", type=int, default=4, help="外扩边距 px（默认4）")
+    parser.add_argument("--box_threshold", "-bt", type=float, default=0.3,
+                        help="检测框置信度阈值（默认0.3，降低可检测更多元素）")
+    parser.add_argument("--text_threshold", "-tt", type=float, default=0.25,
+                        help="文本匹配阈值（默认0.25）")
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.image):
+        print(f"错误: 图片不存在 - {args.image}")
+        sys.exit(1)
+
+    # 自动输出目录
+    if args.output is None:
+        base = Path(args.image).stem
+        parent = Path(args.image).parent
+        args.output = str(parent / f"{base}_sliced")
+
+    check_env()
+
+    print(f"  输入: {args.image}")
+    print(f"  输出: {args.output}")
+    print()
+
+    t_total = time.time()
+
+    # Phase 1: 文本引导检测
+    boxes, labels, scores = phase1_detect(
+        args.image, args.prompt,
+        box_threshold=args.box_threshold,
+        text_threshold=args.text_threshold,
+    )
+
+    if len(boxes) == 0:
+        print("未检测到任何元素，建议：")
+        print("  1. 降低 --box_threshold（如 0.15）")
+        print("  2. 更换 --prompt（更具体的描述，如 'gold coin . blue button'）")
+        sys.exit(0)
+
+    # Phase 2: 像素级分割
+    masks, mask_scores = phase2_segment(args.image, boxes)
+
+    # Phase 3: 导出
+    slices = phase3_export(
+        args.image, masks, labels, boxes, mask_scores,
+        args.output, args.padding,
+    )
+
+    # 生成预览和清单
+    print("[输出]")
+    generate_preview(args.image, slices, masks, args.output)
+    generate_manifest(args.image, slices, args.output, args.prompt)
+
+    # 汇总
+    elapsed = time.time() - t_total
+    cats = {}
+    for s in slices:
+        cats[s["label"]] = cats.get(s["label"], 0) + 1
+
+    print()
+    print("=" * 60)
+    print(f"  切图完成!")
+    print(f"  耗时:   {elapsed:.1f}s")
+    print(f"  输出:   {args.output}")
+    print(f"  切片:   {len(slices)} 个")
+    print(f"  分类:   {cats}")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()</pre>
+  </div>
+</div>
+
+<!-- ==================== 底部 ==================== -->
+<div style="text-align:center; padding:3rem 0; border-top:1px solid var(--border); margin-top:3rem; color:var(--dim); font-size:0.85rem;">
+  UI切图专业工具 v2.0 · Grounding DINO + SAM 2 · 2025
+</div>
+
+</div>
+
+<!-- ==================== JavaScript ==================== -->
+<script>
+// 获取Python源代码文本
+function getPythonCode() {
+  // 代码块中的HTML实体需要还原
+  var codeEl = document.getElementById('python-code');
+  var text = codeEl.textContent || codeEl.innerText;
+  // 还原HTML实体
+  text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return text;
+}
+
+// 下载Python脚本
+function downloadScript() {
+  var code = getPythonCode();
+  var blob = new Blob([code], {type: 'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'ui_slicer_pro.py';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// 复制代码到剪贴板
+function copyCode(btn) {
+  var codeBlock = btn.closest('.code-block');
+  var pre = codeBlock.querySelector('pre');
+  var text = pre.textContent || pre.innerText;
+  text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = '已复制!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = '复制';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// 复制全部代码
+function copyAllCode() {
+  var code = getPythonCode();
+  navigator.clipboard.writeText(code).then(function() {
+    var btn = event.target;
+    btn.textContent = '已复制!';
+    setTimeout(function() { btn.textContent = '复制全部代码'; }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>

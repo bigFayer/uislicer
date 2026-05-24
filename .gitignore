@@ -1,0 +1,26 @@
+# 输出目录
+*_sliced/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+env/
+*.egg-info/
+
+# 模型缓存
+.cache/
+huggingface/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 样本图片（按需取消注释）
+# samples/
